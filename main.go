@@ -3,37 +3,23 @@ package main
 import (
 	"log"
 	"net/http"
-	"net/url"
+	"time"
 
-	"github.com/dyatlov/go-opengraph/opengraph"
+	"github.com/gorilla/mux"
 )
 
 func main() {
-	deps, err := GetAllDeps()
+	r := mux.NewRouter()
+	r.HandleFunc("/", ShHandler)
+	http.Handle("/", r)
 
-	parseError(err)
-
-	for _, dep := range deps {
-		_, err := url.ParseRequestURI(dep.HomePage)
-		if err != nil {
-			continue
-		}
-		resp, err := http.Get(dep.HomePage)
-		if err != nil {
-			continue
-		}
-		og := opengraph.NewOpenGraph()
-		err = og.ProcessHTML(resp.Body)
-		if err != nil {
-			continue
-		}
-		if len(og.Images) > 0 {
-			//if not valid url, try to add homepage and see if valid. else don't care
-			if og.Images[0].SecureURL == "" {
-				log.Println(dep.FullName + ": " + og.Images[0].URL)
-			} else {
-				log.Println(dep.FullName + ": " + og.Images[0].SecureURL)
-			}
-		}
+	srv := &http.Server{
+		Handler: r,
+		Addr:    "127.0.0.1:8080",
+		// Good practice: enforce timeouts for servers you create!
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
 	}
+
+	log.Fatal(srv.ListenAndServe())
 }

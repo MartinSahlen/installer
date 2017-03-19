@@ -66,6 +66,7 @@ func GetBrewCaskDeps() ([]Dependency, error) {
 					dep.Name = strings.Split(val, " ")[0]
 				}
 			}
+			dep.Type = BrewCask
 		}
 		deps = append(deps, dep)
 	}
