@@ -48,6 +48,7 @@ func GetBrewCaskDeps() ([]Dependency, error) {
 
 	for _, cask := range casks {
 		dep := Dependency{}
+		didSetName := false
 		for _, line := range strings.Split(cask, "\n") {
 			pair := strings.SplitN(strings.TrimSpace(line), " ", 2)
 			if len(pair) >= 2 {
@@ -57,8 +58,9 @@ func GetBrewCaskDeps() ([]Dependency, error) {
 				if key == "homepage" {
 					dep.HomePage = val
 				}
-				if key == "name" {
+				if key == "name" && !didSetName {
 					dep.FullName = val
+					didSetName = true
 				}
 				if key == "cask" {
 					dep.Name = strings.Split(val, " ")[0]

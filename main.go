@@ -13,9 +13,9 @@ func main() {
 	for _, brewDep := range brewDeps {
 		for _, brewCaskDep := range brewCaskDeps {
 			if brewDep.Name == brewCaskDep.Name {
-				log.Println("brew: " + brewDep.Name + " " + brewDep.HomePage)
+				log.Println("brew: " + brewDep.FullName + " " + brewDep.HomePage)
 
-				log.Println("cask: " + brewCaskDep.Name + " " + brewCaskDep.HomePage)
+				log.Println("cask: " + brewCaskDep.FullName + " " + brewCaskDep.HomePage)
 			}
 		}
 	}
