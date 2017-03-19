@@ -1,23 +1,39 @@
 package main
 
-import "log"
+import (
+	"log"
+	"net/http"
+	"net/url"
+
+	"github.com/dyatlov/go-opengraph/opengraph"
+)
 
 func main() {
-	//deps, err := GetAllDeps()
+	deps, err := GetAllDeps()
 
-	//parseError(err)
+	parseError(err)
 
-	brewDeps, _ := GetBrewDeps()
-	brewCaskDeps, _ := GetBrewCaskDeps()
-
-	for _, brewDep := range brewDeps {
-		for _, brewCaskDep := range brewCaskDeps {
-			if brewDep.Name == brewCaskDep.Name {
-				log.Println("brew: " + brewDep.FullName + " " + brewDep.HomePage)
-
-				log.Println("cask: " + brewCaskDep.FullName + " " + brewCaskDep.HomePage)
+	for _, dep := range deps {
+		_, err := url.ParseRequestURI(dep.HomePage)
+		if err != nil {
+			continue
+		}
+		resp, err := http.Get(dep.HomePage)
+		if err != nil {
+			continue
+		}
+		og := opengraph.NewOpenGraph()
+		err = og.ProcessHTML(resp.Body)
+		if err != nil {
+			continue
+		}
+		if len(og.Images) > 0 {
+			//if not valid url, try to add homepage and see if valid. else don't care
+			if og.Images[0].SecureURL == "" {
+				log.Println(dep.FullName + ": " + og.Images[0].URL)
+			} else {
+				log.Println(dep.FullName + ": " + og.Images[0].SecureURL)
 			}
 		}
 	}
-
 }
