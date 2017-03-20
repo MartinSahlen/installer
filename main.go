@@ -5,12 +5,21 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/MartinSahlen/installer/brew"
 	"github.com/gorilla/mux"
 )
 
 func main() {
+
+	db, err := brew.NewDB()
+
+	if err != nil {
+		panic(err)
+	}
+
 	r := mux.NewRouter()
-	r.HandleFunc("/", ShHandler)
+	//add some more routes
+	r.HandleFunc("/{id}", ShHandler(db))
 	http.Handle("/", r)
 
 	srv := &http.Server{

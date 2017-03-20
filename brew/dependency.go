@@ -1,6 +1,4 @@
-package main
-
-import "github.com/pkg/errors"
+package brew
 
 type DependencyType string
 
@@ -30,19 +28,4 @@ type Dependency struct {
 	RecommendedDependencies []string                `json:"recommended_dependencies"`
 	OptionalDependencies    []string                `json:"optional_dependencies"`
 	BuildDependencies       []string                `json:"build_dependencies"`
-}
-
-func GetAllDeps() ([]Dependency, error) {
-	brewDeps, err := GetBrewDeps()
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Could not get brew dependencies")
-	}
-
-	brewCaskDeps, err := GetBrewCaskDeps()
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Could not get brew cask dependencies")
-	}
-	return append(brewCaskDeps, brewDeps...), nil
 }

@@ -2,41 +2,49 @@ package main
 
 import (
 	"bytes"
+	"log"
 	"net/http"
 	"text/template"
 
+	"github.com/MartinSahlen/installer/brew"
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
-func ShHandler(w http.ResponseWriter, r *http.Request) {
+func ShHandler(db *brew.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
 
-	brewDeps, err := GetBrewDeps()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(nil)
-	}
-	brewCaskDeps, err := GetBrewCaskDeps()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(nil)
-	}
-	sh, err := GenerateSh(brewDeps, brewCaskDeps)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(nil)
-	}
-	_, err = w.Write([]byte(sh))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(nil)
+		log.Println(vars["id"])
+
+		brewDeps, err := db.GetBrewDeps()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(nil)
+		}
+		brewCaskDeps, err := db.GetBrewCaskDeps()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(nil)
+		}
+		sh, err := GenerateSh(brewDeps, brewCaskDeps)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(nil)
+		}
+		_, err = w.Write([]byte(sh))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(nil)
+		}
 	}
 }
 
-func GenerateSh(brewDeps, brewCaskDeps []Dependency) (string, error) {
+func GenerateSh(brewDeps, brewCaskDeps []brew.Dependency) (string, error) {
 
 	type deps struct {
-		BrewDeps     []Dependency
-		BrewCaskDeps []Dependency
+		BrewDeps     []brew.Dependency
+		BrewCaskDeps []brew.Dependency
 	}
 
 	const tmpl = `#/bin/bash

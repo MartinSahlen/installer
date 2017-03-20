@@ -1,17 +1,19 @@
-package main
+package opengraph
 
 import (
 	"log"
 	"net/http"
 	"net/url"
 
+	"github.com/MartinSahlen/installer/brew"
 	"github.com/dyatlov/go-opengraph/opengraph"
 )
 
 func GetOpenGraphImages() {
-	deps, err := GetAllDeps()
 
-	parseError(err)
+	db, _ := brew.NewDB()
+
+	deps, _ := db.GetAllDeps()
 
 	for _, dep := range deps {
 		_, err := url.ParseRequestURI(dep.HomePage)
