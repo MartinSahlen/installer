@@ -1,19 +1,16 @@
-package main
+package install
 
 import (
 	"archive/zip"
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"text/template"
 
 	"github.com/MartinSahlen/installer/brew"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -79,104 +76,85 @@ func ArchiveInstallApp(inFilePath, installScript string, writer io.Writer) error
 	return zipWriter.Close()
 }
 
-func InstallAppHandler(db *brew.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-
-		installScript, err := GenerateInstallScript(db, vars["id"])
-
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(nil)
-		}
-
-		w.Header().Set("Content-Type", "application/zip")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", "Installer.zip"))
-		err = ArchiveInstallApp("./Installer", installScript, w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(nil)
-		}
-	}
-}
-
-func GenerateInstallScript(db *brew.DB, id string) (string, error) {
-
-	brewDeps, err := db.GetBrewDeps()
-	if err != nil {
-		return "", nil
-	}
-
-	brewCaskDeps, err := db.GetBrewCaskDeps()
-	if err != nil {
-		return "", nil
-	}
-
+func GenerateInstallScript(db *brew.DB, configID string) (string, error) {
 	type deps struct {
 		BrewDeps     []brew.Dependency
 		BrewCaskDeps []brew.Dependency
 	}
 
-	const tmpl = `#/bin/bash
-function install_brew {
-  echo "Installing Homebrew..."
-  if !(hash brew 2>/dev/null); then
+	d, err := db.GetDependenciesForID(configID)
+
+	if err != nil {
+		return "", nil
+	}
+
+	brewDeps := []brew.Dependency{}
+	brewCaskDeps := []brew.Dependency{}
+
+	for _, dep := range d {
+		if dep.Type == brew.Brew {
+			brewDeps = append(brewDeps, dep)
+		}
+		if dep.Type == brew.BrewCask {
+			brewCaskDeps = append(brewCaskDeps, dep)
+		}
+	}
+
+	const tmpl = `function install_brew {
+  echo \"Installing Homebrew...\"
+	/usr/local/bin/brew > /dev/null 2>&1;
+  if [ $? -ne 0 ]; then
     ruby \
-    -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" \
+    -e \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)\" \
     </dev/null
-    brew doctor
+    /usr/local/bin/brew doctor
   else
-    echo "Brew was already installed, upgrading"
-    brew update;
-    brew upgrade;
-    brew prune
+    echo \"Brew was already installed, upgrading\"
+    /usr/local/bin/brew update
+    /usr/local/bin/brew upgrade
+    /usr/local/bin/brew prune
   fi
 }
 
 function install_brew_cask {
-  echo "Installing Homebrew Cask..."
-  brew cask > /dev/null 2>&1;
+  echo \"Installing Homebrew Cask...\"
+  /usr/local/bin/brew cask > /dev/null 2>&1;
   if [ $? -ne 0 ]; then
-    brew install caskroom/cask/brew-cask;
-    brew cask doctor;
+    /usr/local/bin/brew install caskroom/cask/brew-cask
+    /usr/local/bin/brew cask doctor
   else
-    echo "Brew cask was already installed, upgrading"
-    brew update;
-    brew upgrade;
-    brew prune
+    echo \"Brew cask was already installed, upgrading\"
+    /usr/local/bin/brew update
+    /usr/local/bin/brew upgrade
+    /usr/local/bin/brew prune
   fi
 }
 
 function setup_brew {
-  echo "Setting up brew..."
+  echo \"Setting up brew...\"
   install_brew
   install_brew_cask
 }
 
 function install_brew_deps {
-  echo "Installing brew dependencies..."
-  {{range .BrewDeps}}brew install {{.Name}}
+  echo \"Installing brew dependencies...\"
+  {{range .BrewDeps}}/usr/local/bin/brew install {{.Name}}
   {{end}}
-
-  brew cleanup
-  brew doctor
+  /usr/local/bin/brew cleanup
+  /usr/local/bin/brew doctor
 }
 
 function install_brew_cask_deps {
-  echo "Installing brew cask dependencies..."
-  {{range .BrewCaskDeps}}brew cask install {{.Name}}
+  echo \"Installing brew cask dependencies...\"
+  {{range .BrewCaskDeps}}/usr/local/bin/brew cask install {{.Name}}
   {{end}}
-
-  brew cleanup
-  brew doctor
+  /usr/local/bin/brew cleanup
+  /usr/local/bin/brew doctor
 }
 
-echo "I need to ask for the administrator password upfront to avoid stopping the install (Java etc)"
-sudo -v
-
-# Keep-alive: update existing sudo time stamp until finished
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
-`
+setup_brew
+install_brew_deps
+install_brew_cask_deps`
 
 	t := template.Must(template.New("sh").Parse(tmpl))
 

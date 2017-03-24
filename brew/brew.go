@@ -74,15 +74,17 @@ func (db *DB) GetDepsByNames(names []string) ([]Dependency, error) {
 	return found, nil
 }
 
-func (db *DB) SaveDependencies(deps []Dependency) (string, error) {
-
+func (db *DB) SaveDependencies(deps []Dependency) (*DependencySet, error) {
 	byt, err := json.Marshal(deps)
 	if err != nil {
-		return "", errors.Wrap(err, "Could not save deps")
+		return nil, errors.Wrap(err, "Could not save deps")
 	}
 	id := uuid.NewV4().String()
 	db.store[id] = byt
-	return id, nil
+	return &DependencySet{
+		ID:           id,
+		Dependencies: deps,
+	}, nil
 }
 
 func (db *DB) GetDependenciesForID(id string) ([]Dependency, error) {

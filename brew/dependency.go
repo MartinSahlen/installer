@@ -14,6 +14,11 @@ type DependencyRequirement struct {
 	Download string `json:"download"`
 }
 
+type DependencySet struct {
+	ID           string       `json:"id"`
+	Dependencies []Dependency `json:"dependencies"`
+}
+
 type Dependency struct {
 	Type                    DependencyType          `json:"type"`
 	Name                    string                  `json:"name"`
