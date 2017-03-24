@@ -19,7 +19,7 @@ func main() {
 
 	r := mux.NewRouter()
 	//add some more routes
-	r.HandleFunc("/{id}", InstallHandler(db))
+	r.HandleFunc("/{id}", InstallAppHandler(db))
 	http.Handle("/", r)
 
 	srv := &http.Server{

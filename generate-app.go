@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -18,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Archive(inFilePath, installScript string, writer io.Writer) error {
+func ArchiveInstallApp(inFilePath, installScript string, writer io.Writer) error {
 	zipWriter := zip.NewWriter(writer)
 
 	basePath := filepath.Dir(inFilePath)
@@ -80,23 +79,12 @@ func Archive(inFilePath, installScript string, writer io.Writer) error {
 	return zipWriter.Close()
 }
 
-func InstallHandler(db *brew.DB) http.HandlerFunc {
+func InstallAppHandler(db *brew.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 
-		log.Println(vars["id"])
+		installScript, err := GenerateInstallScript(db, vars["id"])
 
-		brewDeps, err := db.GetBrewDeps()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(nil)
-		}
-		brewCaskDeps, err := db.GetBrewCaskDeps()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(nil)
-		}
-		sh, err := GenerateSh(brewDeps, brewCaskDeps)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(nil)
@@ -104,8 +92,7 @@ func InstallHandler(db *brew.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", "Installer.zip"))
-		err = Archive("./Installer", sh, w)
-
+		err = ArchiveInstallApp("./Installer", installScript, w)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(nil)
@@ -113,7 +100,17 @@ func InstallHandler(db *brew.DB) http.HandlerFunc {
 	}
 }
 
-func GenerateSh(brewDeps, brewCaskDeps []brew.Dependency) (string, error) {
+func GenerateInstallScript(db *brew.DB, id string) (string, error) {
+
+	brewDeps, err := db.GetBrewDeps()
+	if err != nil {
+		return "", nil
+	}
+
+	brewCaskDeps, err := db.GetBrewCaskDeps()
+	if err != nil {
+		return "", nil
+	}
 
 	type deps struct {
 		BrewDeps     []brew.Dependency
@@ -185,7 +182,7 @@ while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
 	var byt bytes.Buffer
 
-	err := t.Execute(&byt, deps{
+	err = t.Execute(&byt, deps{
 		BrewDeps:     brewDeps,
 		BrewCaskDeps: brewCaskDeps,
 	})
