@@ -1,0 +1,8 @@
+#!/bin/bash
+osascript -e 'display notification "Installing X apps, go grab a ☕️" with title "Installer"
+activate
+do shell script "
+{{.InstallScript}}
+"
+display notification result with Title "Installer"
+display notification "Finished, yey!" with title "Installer"'

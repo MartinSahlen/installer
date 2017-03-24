@@ -1,4 +1,0 @@
-#!/bin/bash
-osascript -e "display notification \"Installing X apps, go grab a ☕️\" with title \"Installer\""
-osascript -e "do shell script \"open -a Calculator\" with administrator privileges"
-osascript -e "display notification \"Finished, yey!\" with title \"Installer\""
